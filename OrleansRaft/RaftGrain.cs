@@ -44,15 +44,11 @@ namespace OrleansRaft
             rand = new Random();
             state = NodeState.Follower;
 
-            if (this.GetPrimaryKeyString() != this.RuntimeIdentity)
+            if (this.GetPrimaryKeyString() == this.RuntimeIdentity)
             {
-                Console.WriteLine($"{this.GetPrimaryKeyString()} deactivating, grain is not hosted in the correct silo");
-                this.DeactivateOnIdle();
-                await base.OnActivateAsync();
-                return;
+                ResetElectionTimeout();
             }
-
-            ResetElectionTimeout();
+            
             await base.OnActivateAsync();
         }
 
@@ -151,6 +147,13 @@ namespace OrleansRaft
 
         public Task<AppendResponse> Append(AppendRequest request)
         {
+            if (this.GetPrimaryKeyString() != this.RuntimeIdentity)
+            {
+                Console.WriteLine($"{this.GetPrimaryKeyString()} deactivating, grain is not hosted in the correct silo");
+                this.DeactivateOnIdle();
+                return null;
+            }
+
             if (request == null) return Task.FromResult(new AppendResponse
             {
                 Success = false,
@@ -194,6 +197,14 @@ namespace OrleansRaft
 
         public Task<RequestVoteResponse> RequestVote(RequestVoteRequest request)
         {
+            if (this.GetPrimaryKeyString() != this.RuntimeIdentity)
+            {
+                Console.WriteLine($"{this.GetPrimaryKeyString()} deactivating, grain is not hosted in the correct silo");
+                this.DeactivateOnIdle();
+                return null;
+            }
+
+
             Console.WriteLine($"recieved vote request from {request.Candidate}");
 
             if (request.Term > this.term)
